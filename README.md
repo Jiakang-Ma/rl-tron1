@@ -18,16 +18,24 @@ A reinforcement learning framework for training bipedal robot locomotion using [
 
 ## Demo
 
-### Isaac Lab Simulation
+<table>
+<tr>
+<td align="center" width="50%">
+
+**Isaac Lab Training**
+
 ![Isaac Lab Training](./media/play_isaaclab.gif)
 
-### MuJoCo Simulation (Sim2Sim)
+</td>
+<td align="center" width="50%">
+
+**MuJoCo Sim2Sim Deployment**
+
 ![MuJoCo Deployment](./media/play_mujoco.gif)
 
-### Real Robot Deployment
-![Real Robot](./media/rl_real.gif)
-
-> **Note**: Replace these GIFs with your own training/deployment videos.
+</td>
+</tr>
+</table>
 
 ## Project Structure
 
