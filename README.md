@@ -152,6 +152,40 @@ For detailed instructions, see:
 - [tron1-rl-deploy-python](https://github.com/limxdynamics/tron1-rl-deploy-python)
 - [pointfoot-mujoco-sim](https://github.com/limxdynamics/pointfoot-mujoco-sim)
 
+## Single-Leg Jump Imitation Learning (Target Goal)
+
+This project includes reference motion data and tools for training single-leg jump motions using imitation learning.
+
+### 1. Motion Visualization (Target Goal)
+You can visualize the target jump motion in MuJoCo to understand the desired behavior before training:
+
+![Target Jump Goal](./media/play%20jump%20target.gif)
+
+```bash
+# In the project root
+/Users/majk/Library/Python/3.9/bin/mjpython motion_data/visualize_motion.py --motion jump
+```
+
+**Controls:**
+- `SPACE`: Pause/Resume
+- `R`: Reset to start
+- `+/-`: Speed up/slow down
+- `ESC`: Exit
+
+### 2. Training for Jump
+To train the robot for the jump task:
+
+```bash
+bash ./train_jump.sh
+```
+
+The reward functions for this task are defined in `exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/mdp/imitation_rewards.py`, which include:
+- **Motion Imitation Reward**: Tracks the reference trajectory (joint positions and base height).
+- **Jump Height Reward**: Specifically incentivizes jumping above the standing baseline (0.82m).
+- **Air Time Reward**: Rewards both feet leaving the ground simultaneously.
+- **Landing Stability Reward**: Penalizes high angular velocities during landing.
+
+
 ## Sim2Real Deployment
 
 The policies are trained using PPO within an asymmetric actor-critic framework, with actions determined by history observations latent and proprioceptive observation.
