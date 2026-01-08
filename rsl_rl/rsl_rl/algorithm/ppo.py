@@ -37,33 +37,33 @@ from rsl_rl.storage import RolloutStorage
 
 
 class PPO:
-    """PPO算法实现类 - 近端策略优化算法的完整实现 / PPO algorithm implementation class - complete implementation of Proximal Policy Optimization"""
-    actor_critic: ActorCritic  # Actor-Critic网络 / Actor-Critic network
-    encoder: MLP_Encoder       # MLP编码器 / MLP encoder
+    """PPO algorithm implementation class - complete implementation of Proximal Policy Optimization"""
+    actor_critic: ActorCritic  # Actor-Critic network
+    encoder: MLP_Encoder       # MLP encoder
 
     def __init__(
         self,
-        num_group,                    # 环境组数 / Number of environment groups
-        encoder,                      # 编码器实例 / Encoder instance
-        actor_critic,                 # Actor-Critic网络实例 / Actor-Critic network instance
-        num_learning_epochs=1,        # 学习轮数 / Number of learning epochs
-        num_mini_batches=1,           # 小批次数量 / Number of mini-batches
-        clip_param=0.2,               # PPO裁剪参数 / PPO clipping parameter
-        gamma=0.998,                  # 折扣因子 / Discount factor
-        lam=0.95,                     # GAE lambda参数 / GAE lambda parameter
-        value_loss_coef=1.0,          # 值函数损失系数 / Value function loss coefficient
-        entropy_coef=0.0,             # 熵正则化系数 / Entropy regularization coefficient
-        learning_rate=1e-3,           # 学习率 / Learning rate
-        max_grad_norm=1.0,            # 梯度裁剪阈值 / Gradient clipping threshold
-        use_clipped_value_loss=True,  # 使用裁剪值函数损失 / Use clipped value function loss
-        schedule="fixed",             # 学习率调度策略 / Learning rate scheduling strategy
-        desired_kl=0.01,              # 目标KL散度 / Target KL divergence
-        vae_beta=1.0,                 # VAE beta参数 / VAE beta parameter
-        est_learning_rate=1.0e-3,     # 估计器学习率 / Estimator learning rate
-        critic_take_latent=False,     # 评价器是否使用潜在表示 / Whether critic uses latent representation
-        early_stop=False,             # 早停机制 / Early stopping mechanism
-        anneal_lr=False,              # 学习率衰减 / Learning rate annealing
-        device="cpu",                 # 计算设备 / Computing device
+        num_group,                    # Number of environment groups
+        encoder,                      # Encoder instance
+        actor_critic,                 # Actor-Critic network instance
+        num_learning_epochs=1,        # Number of learning epochs
+        num_mini_batches=1,           # Number of mini-batches
+        clip_param=0.2,               # PPO clipping parameter
+        gamma=0.998,                  # Discount factor
+        lam=0.95,                     # GAE lambda parameter
+        value_loss_coef=1.0,          # Value function loss coefficient
+        entropy_coef=0.0,             # Entropy regularization coefficient
+        learning_rate=1e-3,           # Learning rate
+        max_grad_norm=1.0,            # Gradient clipping threshold
+        use_clipped_value_loss=True,  # Use clipped value function loss
+        schedule="fixed",             # Learning rate scheduling strategy
+        desired_kl=0.01,              # Target KL divergence
+        vae_beta=1.0,                 # VAE beta parameter
+        est_learning_rate=1.0e-3,     # Estimator learning rate
+        critic_take_latent=False,     # Whether critic uses latent representation
+        early_stop=False,             # Early stopping mechanism
+        anneal_lr=False,              # Learning rate annealing
+        device="cpu",                 # Computing device
         **kwargs
     ):
         self.device = device
@@ -106,15 +106,15 @@ class PPO:
 
     def init_storage(
         self,
-        num_envs,                     # 环境数量 / Number of environments
-        num_transitions_per_env,      # 每个环境的转换数 / Number of transitions per environment
-        actor_obs_shape,              # Actor观测形状 / Actor observation shape
-        critic_obs_shape,             # Critic观测形状 / Critic observation shape
-        obs_history_shape,            # 观测历史形状 / Observation history shape
-        commands_shape,               # 命令形状 / Commands shape
-        action_shape,                 # 动作形状 / Action shape
+        num_envs,                     # Number of environments
+        num_transitions_per_env,      # Number of transitions per environment
+        actor_obs_shape,              # Actor observation shape
+        critic_obs_shape,             # Critic observation shape
+        obs_history_shape,            # Observation history shape
+        commands_shape,               # Commands shape
+        action_shape,                 # Action shape
     ):
-        """初始化经验存储缓冲区 / Initialize experience storage buffer"""
+        """Initialize experience storage buffer"""
         self.storage = RolloutStorage(
             num_envs,
             num_transitions_per_env,
@@ -127,48 +127,48 @@ class PPO:
         )
 
     def test_mode(self):
-        """设置为测试模式 / Set to test mode"""
+        """Set to test mode"""
         self.actor_critic.test()
 
     def train_mode(self):
-        """设置为训练模式 / Set to training mode"""
+        """Set to training mode"""
         self.actor_critic.train()
 
     def act(self, obs, obs_history, commands, critic_obs):
-        """执行动作选择和价值评估 / Perform action selection and value evaluation
+        """Perform action selection and value evaluation
         
         Args:
-            obs: 当前观测 / Current observations
-            obs_history: 观测历史 / Observation history
-            commands: 命令输入 / Command inputs
-            critic_obs: 评价器观测 / Critic observations
+            obs: Current observations
+            obs_history: Observation history
+            commands: Command inputs
+            critic_obs: Critic observations
             
         Returns:
-            选择的动作 / Selected actions
+            Selected actions
         """
 
-        # 拼接评价器观测和命令 / Concatenate critic observations and commands
+        # Concatenate critic observations and commands
         critic_obs = torch.cat((critic_obs, commands), dim=-1)
 
-        # 动作选择 / Action selection
+        # Action selection
         encoder_out = self.encoder.encode(obs_history)
         self.transition.actions = self.actor_critic.act(
             torch.cat((encoder_out, obs, commands), dim=-1)
         ).detach()
 
-        # 价值评估 / Value evaluation
+        # Value evaluation
         if self.critic_take_latent:
             critic_obs = torch.cat((critic_obs, encoder_out), dim=-1)
         self.transition.values = self.actor_critic.evaluate(critic_obs).detach()
 
-        # 存储转换信息 / Store transition information
+        # Store transition information
         self.transition.actions_log_prob = self.actor_critic.get_actions_log_prob(
             self.transition.actions
         ).detach()
         self.transition.action_mean = self.actor_critic.action_mean.detach()
         self.transition.action_sigma = self.actor_critic.action_std.detach()
 
-        # 需要在env.step()之前记录观测和评价器观测 / Need to record obs and critic_obs before env.step()
+        # Need to record obs and critic_obs before env.step()
         self.transition.observations = obs
         self.transition.critic_obs = critic_obs
         self.transition.observation_history = obs_history
@@ -176,13 +176,13 @@ class PPO:
         return self.transition.actions
 
     def process_env_step(self, rewards, dones, infos, next_obs=None):
-        """处理环境步进结果 / Process environment step results
+        """Process environment step results
         
         Args:
-            rewards: 奖励信号 / Reward signals
-            dones: 结束标志 / Done flags
-            infos: 额外信息 / Additional information
-            next_obs: 下一步观测 / Next observations
+            rewards: Reward signals
+            dones: Done flags
+            infos: Additional information
+            next_obs: Next observations
         """
         self.transition.rewards = rewards.clone()
         self.transition.dones = dones
@@ -201,15 +201,15 @@ class PPO:
         self.actor_critic.reset(dones)
 
     def compute_returns(self, last_critic_obs):
-        """计算回报值 / Compute returns"""
+        """Compute returns"""
         last_values = self.actor_critic.evaluate(last_critic_obs).detach()
         self.storage.compute_returns(last_values, self.gamma, self.lam)
 
     def update(self):
-        """执行PPO更新 / Perform PPO update
+        """Perform PPO update
         
         Returns:
-            平均值函数损失、额外损失、代理损失、KL散度 / Average value loss, extra loss, surrogate loss, KL divergence
+            Average value loss, extra loss, surrogate loss, KL divergence
         """
         num_updates = 0
         mean_value_loss = 0
@@ -233,11 +233,11 @@ class PPO:
             old_mu_batch,
             old_sigma_batch,
         ) in generator:
-            # 编码观测历史 / Encode observation history
+            # Encode observation history
             encoder_out_batch = self.encoder.encode(obs_history_batch)
             commands_batch = group_commands_batch
 
-            # 前向传播获取新的策略分布 / Forward pass to get new policy distribution
+            # Forward pass to get new policy distribution
             self.actor_critic.act(
                 torch.cat(
                     (encoder_out_batch, obs_batch, commands_batch),
@@ -245,18 +245,18 @@ class PPO:
                 )
             )
 
-            # 计算新的动作对数概率 / Calculate new action log probabilities
+            # Calculate new action log probabilities
             actions_log_prob_batch = self.actor_critic.get_actions_log_prob(
                 actions_batch
             )
 
-            # 计算价值函数输出 / Calculate value function output
+            # Calculate value function output
             value_batch = self.actor_critic.evaluate(critic_obs_batch)
             mu_batch = self.actor_critic.action_mean
             sigma_batch = self.actor_critic.action_std
             entropy_batch = self.actor_critic.entropy
 
-            # 计算KL散度 / Calculate KL divergence
+            # Calculate KL divergence
             kl_mean = torch.tensor(0, device=self.device, requires_grad=False)
             with torch.inference_mode():
                 kl = torch.sum(
@@ -271,7 +271,7 @@ class PPO:
                 )
                 kl_mean = torch.mean(kl)
 
-            # 自适应学习率调整 / Adaptive learning rate adjustment
+            # Adaptive learning rate adjustment
             if self.desired_kl != None and self.schedule == "adaptive":
                 with torch.inference_mode():
                     if kl_mean > self.desired_kl * 2.0:
@@ -282,13 +282,13 @@ class PPO:
                     for param_group in self.optimizer.param_groups:
                         param_group["lr"] = self.learning_rate
 
-            # 早停机制 / Early stopping mechanism
+            # Early stopping mechanism
             if self.desired_kl != None and self.early_stop:
                 if kl_mean > self.desired_kl * 1.5:
                     print("early stop, num_updates =", num_updates)
                     break
 
-            # 计算代理损失 / Calculate surrogate loss
+            # Calculate surrogate loss
             ratio = torch.exp(
                 actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch)
             )
@@ -298,7 +298,7 @@ class PPO:
             )
             surrogate_loss = torch.max(surrogate, surrogate_clipped).mean()
 
-            # 计算价值函数损失 / Calculate value function loss
+            # Calculate value function loss
             if self.use_clipped_value_loss:
                 value_clipped = target_values_batch + (
                     value_batch - target_values_batch
@@ -309,7 +309,7 @@ class PPO:
             else:
                 value_loss = (returns_batch - value_batch).pow(2).mean()
 
-            # 计算总损失 / Calculate total loss
+            # Calculate total loss
             entropy_batch_mean = entropy_batch.mean()
             loss = (
                 surrogate_loss
@@ -317,14 +317,14 @@ class PPO:
                 - self.entropy_coef * entropy_batch_mean
             )
 
-            # 学习率退火 / Learning rate annealing
+            # Learning rate annealing
             if self.anneal_lr:
                 frac = 1.0 - num_updates / (
                     self.num_learning_epochs * self.num_mini_batches
                 )
                 self.optimizer.param_groups[0]["lr"] = frac * self.learning_rate
 
-            # 梯度更新 / Gradient update
+            # Gradient update
             self.optimizer.zero_grad()
             loss.backward()
             nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.max_grad_norm)
@@ -335,7 +335,7 @@ class PPO:
             mean_surrogate_loss += surrogate_loss.item()
             mean_kl += kl_mean.item()
 
-        # 编码器额外更新 / Additional encoder updates
+        # Additional encoder updates
         num_updates_extra = 0
         mean_extra_loss = 0
         if self.extra_optimizer is not None:
@@ -365,7 +365,7 @@ class PPO:
                 num_updates_extra += 1
                 mean_extra_loss += extra_loss.item()
 
-        # 计算平均损失 / Calculate average losses
+        # Calculate average losses
         mean_value_loss /= num_updates
         if num_updates_extra > 0:
             mean_extra_loss /= num_updates

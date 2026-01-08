@@ -1,6 +1,5 @@
-"""此子模块包含可用于LimX Point Foot运动任务的奖励函数 / This sub-module contains the reward functions that can be used for LimX Point Foot's locomotion task.
+"""This sub-module contains the reward functions that can be used for LimX Point Foot's locomotion task.
 
-这些函数可以传递给:class:`isaaclab.managers.RewardTermCfg`对象来指定奖励函数及其参数。
 The functions can be passed to the :class:`isaaclab.managers.RewardTermCfg` object to
 specify the reward function and its parameters.
 """
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
     from isaaclab.managers import RewardTermCfg
 
 def stay_alive(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """保持存活奖励 - 给予机器人基本的存在奖励 / Reward for staying alive - gives robot basic existence reward."""
+    """Reward for staying alive - gives robot basic existence reward."""
     return torch.ones(env.num_envs, device=env.device)
 
 def foot_landing_vel(
@@ -32,34 +31,34 @@ def foot_landing_vel(
         foot_radius: float,
         about_landing_threshold: float,
 ) -> torch.Tensor:
-    """惩罚高足部着陆速度 - 鼓励轻柔着陆 / Penalize high foot landing velocities - encourages soft landing"""
+    """Penalize high foot landing velocities - encourages soft landing"""
     asset = env.scene[asset_cfg.name]
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     
-    # 获取足部Z方向速度 / Get foot Z-direction velocities
+    # Get foot Z-direction velocities
     z_vels = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, 2]
     
-    # 检测接触状态 / Detect contact state
+    # Detect contact state
     contacts = contact_sensor.data.net_forces_w[:, sensor_cfg.body_ids, 2] > 0.1
 
-    # 计算足部高度（相对于地面）/ Calculate foot height (relative to ground)
+    # Calculate foot height (relative to ground)
     foot_heights = torch.clip(
         asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - foot_radius, 0, 1
-    )  # TODO: 改为相对于地形垂直投影的高度 / TODO: change to height relative to terrain vertical projection
+    )  # TODO: change to height relative to terrain vertical projection
 
-    # 检测即将着陆状态：低高度 + 无接触 + 下降速度 / Detect about-to-land state: low height + no contact + downward velocity
+    # Detect about-to-land state: low height + no contact + downward velocity
     about_to_land = (foot_heights < about_landing_threshold) & (~contacts) & (z_vels < 0.0)
     
-    # 计算着陆速度惩罚 / Calculate landing velocity penalty
+    # Calculate landing velocity penalty
     landing_z_vels = torch.where(about_to_land, z_vels, torch.zeros_like(z_vels))
     reward = torch.sum(torch.square(landing_z_vels), dim=1)
     return reward
 
 def joint_powers_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-    """使用L1核惩罚关节功率 - 鼓励能效 / Penalize joint powers using L1-kernel - encourages energy efficiency"""
-    # 提取使用的数量（启用类型提示）/ Extract the used quantities (to enable type-hinting)
+    """Penalize joint powers using L1-kernel - encourages energy efficiency"""
+    # Extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
-    # 功率 = 力矩 × 角速度 / Power = Torque × Angular Velocity
+    # Power = Torque × Angular Velocity
     return torch.sum(torch.abs(torch.mul(asset.data.applied_torque, asset.data.joint_vel)), dim=1)
 
 
@@ -246,21 +245,21 @@ def feet_regulation(env: ManagerBasedRLEnv,
     foot_radius: float,
     base_height_target: float,
 ) -> torch.Tensor:
-    """足部调节奖励 - 惩罚足部不当运动 / Foot regulation reward - penalizes improper foot movement"""
+    """Foot regulation reward - penalizes improper foot movement"""
     asset: RigidObject = env.scene[asset_cfg.name]
     
-    # 计算足部高度 / Calculate foot height
+    # Calculate foot height
     feet_height = torch.clip(
         asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - foot_radius, 0, 1
-    )  # TODO: 改为相对于地形垂直投影的高度 / TODO: change to height relative to terrain vertical projection
+    )  # TODO: change to height relative to terrain vertical projection
     
-    # 获取足部XY方向速度 / Get foot XY-direction velocities
+    # Get foot XY-direction velocities
     feet_vel_xy = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2]
 
-    # 高度缩放：足部越低，惩罚权重越大 / Height scaling: lower foot height, higher penalty weight
+    # Height scaling: lower foot height, higher penalty weight
     height_scale = torch.exp(-feet_height / base_height_target)
     
-    # 计算速度平方惩罚，按高度加权 / Calculate velocity squared penalty, weighted by height
+    # Calculate velocity squared penalty, weighted by height
     reward = torch.sum(height_scale * torch.square(torch.norm(feet_vel_xy, dim=-1)), dim=1)
     return reward
 
@@ -291,10 +290,8 @@ def base_com_height(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     sensor_cfg: SceneEntityCfg | None = None,
 ) -> torch.Tensor:
-    """惩罚基座高度偏离目标 - 维持期望的站立高度 / Penalize base height deviation from target - maintain desired standing height.
+    """Penalize base height deviation from target - maintain desired standing height.
 
-    注意：对于平坦地形，目标高度在世界坐标系中。对于粗糙地形，
-    传感器读数可以调整目标高度以适应地形。
     Note: For flat terrain, target height is in the world frame. For rough terrain,
     sensor readings can adjust the target height to account for the terrain.
     """
@@ -312,25 +309,25 @@ def base_com_height(
 
 
 class GaitReward(ManagerTermBase):
-    """步态奖励类 - 核心步态控制奖励函数 / Gait reward class - core gait control reward function"""
+    """Gait reward class - core gait control reward function"""
     
     def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
-        """初始化步态奖励项 / Initialize the gait reward term.
+        """Initialize the gait reward term.
 
         Args:
-            cfg: 奖励配置 / The configuration of the reward.
-            env: RL环境实例 / The RL environment instance.
+            cfg: The configuration of the reward.
+            env: The RL environment instance.
         """
         super().__init__(cfg, env)
 
         self.sensor_cfg = cfg.params["sensor_cfg"]
         self.asset_cfg = cfg.params["asset_cfg"]
 
-        # 提取使用的数量（启用类型提示）/ Extract the used quantities (to enable type-hinting)
+        # Extract the used quantities (to enable type-hinting)
         self.contact_sensor: ContactSensor = env.scene.sensors[self.sensor_cfg.name]
         self.asset: Articulation = env.scene[self.asset_cfg.name]
 
-        # 存储配置参数 / Store configuration parameters
+        # Store configuration parameters
         self.force_scale = float(cfg.params["tracking_contacts_shaped_force"])
         self.vel_scale = float(cfg.params["tracking_contacts_shaped_vel"])
         self.force_sigma = cfg.params["gait_force_sigma"]
@@ -425,7 +422,7 @@ class GaitReward(ManagerTermBase):
         return desired_contact_states
 
     def _compute_force_reward(self, forces: torch.Tensor, desired_contacts: torch.Tensor) -> torch.Tensor:
-        """计算基于力的奖励组件 / Compute force-based reward component."""
+        """Compute force-based reward component."""
         reward = torch.zeros_like(forces[:, 0])
         if self.force_scale < 0:  # Negative scale means penalize unwanted contact
             for i in range(forces.shape[1]):
@@ -437,7 +434,7 @@ class GaitReward(ManagerTermBase):
         return (reward / forces.shape[1]) * self.force_scale
 
     def _compute_velocity_reward(self, velocities: torch.Tensor, desired_contacts: torch.Tensor) -> torch.Tensor:
-        """计算基于速度的奖励组件 / Compute velocity-based reward component."""
+        """Compute velocity-based reward component."""
         reward = torch.zeros_like(velocities[:, 0])
         if self.vel_scale < 0:  # Negative scale means penalize movement during contact
             for i in range(velocities.shape[1]):
@@ -450,9 +447,9 @@ class GaitReward(ManagerTermBase):
 
 
 class ActionSmoothnessPenalty(ManagerTermBase):
-    """动作平滑性惩罚类 - 惩罚网络动作输出的大幅瞬时变化 / Action smoothness penalty class - penalizes large instantaneous changes in network action output.
+    """Action smoothness penalty class - penalizes large instantaneous changes in network action output.
     
-    此惩罚鼓励动作随时间更平滑。/ This penalty encourages smoother actions over time.
+    This penalty encourages smoother actions over time.
     """
 
     def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):

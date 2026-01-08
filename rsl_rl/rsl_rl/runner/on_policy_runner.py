@@ -44,53 +44,53 @@ from rsl_rl.env import VecEnv
 
 
 class OnPolicyRunner:
-    """在线策略训练器 - 管理PPO算法的完整训练过程 / On-policy trainer - manages complete training process for PPO algorithm"""
+    """On-policy trainer - manages complete training process for PPO algorithm"""
     def __init__(self, env: VecEnv, train_cfg, log_dir=None, device="cpu"):
-        """初始化训练器 / Initialize trainer
+        """Initialize trainer
         
         Args:
-            env: 向量化环境 / Vectorized environment
-            train_cfg: 训练配置 / Training configuration
-            log_dir: 日志目录 / Log directory
-            device: 计算设备 / Computing device
+            env: Vectorized environment
+            train_cfg: Training configuration
+            log_dir: Log directory
+            device: Computing device
         """
         self.cfg = train_cfg
         print(f"encoder cfg: {train_cfg.keys()}")
-        self.ecd_cfg = train_cfg["encoder"]        # 编码器配置 / Encoder configuration
-        self.alg_cfg = train_cfg["algorithm"]      # 算法配置 / Algorithm configuration
-        self.policy_cfg = train_cfg["policy"]      # 策略配置 / Policy configuration
+        self.ecd_cfg = train_cfg["encoder"]        # Encoder configuration
+        self.alg_cfg = train_cfg["algorithm"]      # Algorithm configuration
+        self.policy_cfg = train_cfg["policy"]      # Policy configuration
         self.device = device
         self.env = env
 
-        # 获取环境观测信息 / Get environment observation information
+        # Get environment observation information
         obs, extras = self.env.get_observations()   
         self.num_obs = obs.shape[1]
         self.obs_history_len = self.alg_cfg.pop("obs_history_len")
 
-        # 验证必要的观测组 / Verify necessary observation groups
+        # Verify necessary observation groups
         assert "commands" in extras["observations"], f"Commands not found in observations"
         self.num_commands = extras["observations"]["commands"].shape[1]
         assert "critic" in extras["observations"], f"Critic observations not found in observations"
         num_critic_obs = extras["observations"]["critic"].shape[1] + self.num_commands
 
-        # 设置编码器输入维度 / Set encoder input dimensions
+        # Set encoder input dimensions
         self.ecd_cfg["num_input_dim"] = self.obs_history_len * self.num_obs
 
-        # 创建编码器 / Create encoder
+        # Create encoder
         encoder = eval("MLP_Encoder")(
             **self.ecd_cfg,
         ).to(self.device)
 
-        # 创建Actor-Critic网络 / Create Actor-Critic network
+        # Create Actor-Critic network
         actor_critic_class = eval("ActorCritic")  # ActorCritic
         actor_critic: ActorCritic = actor_critic_class(
-            self.num_obs + encoder.num_output_dim + self.num_commands,  # Actor输入维度 / Actor input dimensions
-            num_critic_obs,                                             # Critic输入维度 / Critic input dimensions
-            self.env.num_actions,                                       # 动作维度 / Action dimensions
+            self.num_obs + encoder.num_output_dim + self.num_commands,  # Actor input dimensions
+            num_critic_obs,                                             # Critic input dimensions
+            self.env.num_actions,                                       # Action dimensions
             **self.policy_cfg,
         ).to(self.device)
 
-        # 创建PPO算法实例 / Create PPO algorithm instance
+        # Create PPO algorithm instance
         alg_class = eval(self.alg_cfg.pop("class_name"))
         self.alg = alg_class(
             self.env.num_envs,
@@ -100,11 +100,11 @@ class OnPolicyRunner:
             **self.alg_cfg,
         )
 
-        # 训练参数 / Training parameters
+        # Training parameters
         self.num_steps_per_env = self.cfg["num_steps_per_env"]
         self.save_interval = self.cfg["save_interval"]
 
-        # 初始化存储和模型 / Initialize storage and model
+        # Initialize storage and model
         self.alg.init_storage(
             self.env.num_envs,
             self.num_steps_per_env,
@@ -115,7 +115,7 @@ class OnPolicyRunner:
             [self.env.num_actions],
         )
 
-        # 观测标准化参数 / Observation normalization parameters
+        # Observation normalization parameters
         self.obs_mean = torch.tensor(
             0, dtype=torch.float, device=self.device, requires_grad=False
         )
@@ -123,24 +123,24 @@ class OnPolicyRunner:
             1, dtype=torch.float, device=self.device, requires_grad=False
         )
 
-        # 日志设置 / Logging setup
+        # Logging setup
         self.log_dir = log_dir
         self.writer = None
         self.tot_timesteps = 0
         self.tot_time = 0
         self.current_learning_iteration = 0
 
-        # 重置环境 / Reset environment
+        # Reset environment
         _ = self.env.reset()
 
     def learn(self, num_learning_iterations, init_at_random_ep_len=False):
-        """执行学习过程 / Execute learning process
+        """Execute learning process
         
         Args:
-            num_learning_iterations: 学习迭代次数 / Number of learning iterations
-            init_at_random_ep_len: 是否从随机episode长度开始 / Whether to start from random episode length
+            num_learning_iterations: Number of learning iterations
+            init_at_random_ep_len: Whether to start from random episode length
         """
-        # 初始化日志记录器 / Initialize logger
+        # Initialize logger
         if self.log_dir is not None and self.writer is None:
             # Launch either Tensorboard or Wandb & Tensorboard summary writer(s), default: Tensorboard.
             self.logger_type = self.cfg.get("logger", "tensorboard")
@@ -160,13 +160,13 @@ class OnPolicyRunner:
             else:
                 raise AssertionError("logger type not found")
 
-        # 随机化episode长度 / Randomize episode length
+        # Randomize episode length
         if init_at_random_ep_len:
             self.env.episode_length_buf = torch.randint_like(
                 self.env.episode_length_buf, high=int(self.env.max_episode_length)
             )
 
-        # 获取初始观测 / Get initial observations
+        # Get initial observations
         obs, extras = self.env.get_observations()
         obs_history = extras["observations"].get("obsHistory")
         obs_history = obs_history.flatten(start_dim=1)
@@ -180,13 +180,13 @@ class OnPolicyRunner:
             critic_obs.to(self.device),
         )
 
-        # 切换到训练模式 / Switch to train mode
+        # Switch to train mode
         self.alg.actor_critic.train()  # switch to train mode (for dropout for example)
 
-        # 训练统计 / Training statistics
+        # Training statistics
         ep_infos = []
-        rewbuffer = deque(maxlen=100)    # 奖励缓冲区 / Reward buffer
-        lenbuffer = deque(maxlen=100)    # 长度缓冲区 / Length buffer
+        rewbuffer = deque(maxlen=100)    # Reward buffer
+        lenbuffer = deque(maxlen=100)    # Length buffer
         cur_reward_sum = torch.zeros(
             self.env.num_envs, dtype=torch.float, device=self.device
         )
@@ -198,22 +198,22 @@ class OnPolicyRunner:
         for it in range(self.current_learning_iteration, tot_iter):
             start = time.time()
 
-            # 数据收集阶段 / Data collection phase
+            # Data collection phase
             with torch.inference_mode():
                 for i in range(self.num_steps_per_env):
 
-                    # 执行动作 / Execute actions
+                    # Execute actions
                     actions = self.alg.act(obs, obs_history, commands, critic_obs)
 
-                    # 环境步进 / Environment step
+                    # Environment step
                     (obs, rewards, dones, infos) = self.env.step(actions)
 
-                    # 更新观测 / Update observations
+                    # Update observations
                     critic_obs = infos["observations"]["critic"]
                     obs_history = infos["observations"]["obsHistory"].flatten(start_dim=1)
                     commands = infos["observations"]["commands"]
 
-                    # 转换到设备 / Transfer to device
+                    # Transfer to device
                     obs, obs_history, commands, critic_obs, rewards, dones = (
                         obs.to(self.device),
                         obs_history.to(self.device),
@@ -223,11 +223,11 @@ class OnPolicyRunner:
                         dones.to(self.device),
                     )
 
-                    # 处理环境步进结果 / Process environment step results
+                    # Process environment step results
                     self.alg.process_env_step(rewards, dones, infos, obs)
 
                     if self.log_dir is not None:
-                        # 记录统计信息 / Record statistics
+                        # Record statistics
                         if "episode" in infos:
                             ep_infos.append(infos["episode"])
                         elif "log" in infos:
@@ -247,10 +247,10 @@ class OnPolicyRunner:
                 stop = time.time()
                 collection_time = stop - start
 
-                # 学习阶段 / Learning phase
+                # Learning phase
                 start = stop
 
-                # 准备评价器观测 / Prepare critic observations
+                # Prepare critic observations
                 critic_obs_ = torch.cat((critic_obs, commands), dim=-1)
                 if self.alg.critic_take_latent:
                     encoder_out = self.alg.encoder.encode(obs_history)
@@ -260,7 +260,7 @@ class OnPolicyRunner:
                 else:
                     self.alg.compute_returns(critic_obs_)
 
-            # 执行PPO更新 / Perform PPO update
+            # Perform PPO update
             (
                 mean_value_loss,
                 mean_extra_loss,
@@ -284,12 +284,12 @@ class OnPolicyRunner:
         )
 
     def log(self, locs, width=80, pad=35):
-        """记录训练统计信息 / Log training statistics
+        """Log training statistics
         
         Args:
-            locs: 局部变量字典 / Local variables dictionary
-            width: 控制台输出宽度 / Console output width
-            pad: 填充长度 / Padding length
+            locs: Local variables dictionary
+            width: Console output width
+            pad: Padding length
         """
         self.tot_timesteps += self.num_steps_per_env * self.env.num_envs
         self.tot_time += locs["collection_time"] + locs["learn_time"]

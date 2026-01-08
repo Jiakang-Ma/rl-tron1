@@ -1,6 +1,6 @@
 """
-参考动作数据模块
-用于双足机器人模仿学习的参考轨迹生成和管理
+Reference motion data module
+Reference trajectory generation and management for bipedal robot imitation learning
 """
 
 from .motion_loader import MotionLoader, MotionData

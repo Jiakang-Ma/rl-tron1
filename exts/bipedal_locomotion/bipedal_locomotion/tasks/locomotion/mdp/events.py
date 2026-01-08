@@ -14,7 +14,7 @@ def prepare_quantity_for_tron(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     foot_radius = 0.127,
 ):
-    """为TRON机器人准备数量参数 / Prepare quantity parameters for TRON robot"""
+    """Prepare quantity parameters for TRON robot"""
     asset: Articulation = env.scene[asset_cfg.name]
     env._foot_radius = foot_radius
 
@@ -26,12 +26,8 @@ def apply_external_force_torque_stochastic(
     probability: float,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ):
-    """随机施加外部力和力矩 / Randomize the external forces and torques applied to the bodies.
+    """Randomize the external forces and torques applied to the bodies.
 
-    该函数创建从给定范围采样的随机力和力矩集合。力和力矩的数量等于物体数量乘以环境数量。
-    力和力矩通过调用``asset.set_external_force_and_torque``应用到物体上。
-    只有当在环境中调用``asset.write_data_to_sim()``时，力和力矩才会被应用。
-    
     This function creates a set of random forces and torques sampled from the given ranges. The number of forces
     and torques is equal to the number of bodies times the number of environments. The forces and torques are
     applied to the bodies by calling ``asset.set_external_force_and_torque``. The forces and torques are only
@@ -78,15 +74,12 @@ def randomize_rigid_body_mass_inertia(
     operation: Literal["add", "scale", "abs"],
     distribution: Literal["uniform", "log_uniform", "gaussian"] = "uniform",
 ):
-    """通过添加、缩放或设置随机值来随机化物体的惯量 / Randomize the inertia of the bodies by adding, scaling, or setting random values.
+    """Randomize the inertia of the bodies by adding, scaling, or setting random values.
 
-    该函数允许随机化资产物体的质量。函数从给定的分布参数中采样随机值，并根据操作将值添加、缩放或设置到物理仿真中。
-    
     This function allows randomizing the mass of the bodies of the asset. The function samples random values from the
     given distribution parameters and adds, scales, or sets the values into the physics simulation based on the operation.
 
     .. tip::
-        该函数使用CPU张量来分配物体质量。建议仅在环境初始化期间使用此函数。
         This function uses CPU tensors to assign the body masses. It is recommended to use this function
         only during the initialization of the environment.
     """
@@ -127,9 +120,7 @@ def randomize_rigid_body_coms(
     operation: Literal["add", "scale", "abs"],
     distribution: Literal["uniform", "log_uniform", "gaussian"] = "uniform",
 ):
-    """通过为每个维度添加、缩放或设置随机值来随机化物体的重心（COM）
-    Randomize the center of mass (COM) of the bodies by adding, scaling, or setting random values for each dimension.
-    """
+    """Randomize the center of mass (COM) of the bodies by adding, scaling, or setting random values for each dimension."""
     asset: RigidObject | Articulation = env.scene[asset_cfg.name]
 
     if env_ids is None:
@@ -171,21 +162,21 @@ def _randomize_prop_by_op(
     operation: Literal["add", "scale", "abs"],
     distribution: Literal["uniform", "log_uniform", "gaussian"],
 ) -> torch.Tensor:
-    """根据给定的操作和分布执行数据随机化 / Perform data randomization based on the given operation and distribution.
+    """Perform data randomization based on the given operation and distribution.
 
     Args:
-        data: 要随机化的数据张量。形状为 (dim_0, dim_1) / The data tensor to be randomized. Shape is (dim_0, dim_1).
-        distribution_parameters: 用于采样值的分布参数 / The parameters for the distribution to sample values from.
-        dim_0_ids: 要随机化的第一维索引 / The indices of the first dimension to randomize.
-        dim_1_ids: 要随机化的第二维索引 / The indices of the second dimension to randomize.
-        operation: 对数据执行的操作。选项：'add', 'scale', 'abs' / The operation to perform on the data. Options: 'add', 'scale', 'abs'.
-        distribution: 采样随机值的分布。选项：'uniform', 'log_uniform', 'gaussian' / The distribution to sample the random values from. Options: 'uniform', 'log_uniform', 'gaussian'.
+        data: The data tensor to be randomized. Shape is (dim_0, dim_1).
+        distribution_parameters: The parameters for the distribution to sample values from.
+        dim_0_ids: The indices of the first dimension to randomize.
+        dim_1_ids: The indices of the second dimension to randomize.
+        operation: The operation to perform on the data. Options: 'add', 'scale', 'abs'.
+        distribution: The distribution to sample the random values from. Options: 'uniform', 'log_uniform', 'gaussian'.
 
     Returns:
-        随机化后的数据张量。形状为 (dim_0, dim_1) / The data tensor after randomization. Shape is (dim_0, dim_1).
+        The data tensor after randomization. Shape is (dim_0, dim_1).
 
     Raises:
-        NotImplementedError: 如果操作或分布不受支持 / If the operation or distribution is not supported.
+        NotImplementedError: If the operation or distribution is not supported.
     """
     # resolve shape
     # -- dim 0

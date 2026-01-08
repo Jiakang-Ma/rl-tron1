@@ -1,6 +1,6 @@
 """
-参考动作加载器
-从 YAML 文件加载动作关键帧并生成平滑轨迹
+Reference motion loader
+Loads motion keyframes from YAML files and generates smooth trajectories
 """
 
 import os
@@ -13,7 +13,7 @@ from scipy.interpolate import CubicSpline
 
 @dataclass
 class MotionData:
-    """单帧动作数据"""
+    """Single frame motion data"""
     time: float
     joint_positions: np.ndarray  # 6 joints: [abad_L, hip_L, knee_L, abad_R, hip_R, knee_R]
     base_height: float
@@ -23,21 +23,21 @@ class MotionData:
 
 class MotionLoader:
     """
-    参考动作加载器
+    Reference motion loader
     
-    使用方法:
+    Usage:
         loader = MotionLoader('motion_data/motions/jump.yaml')
-        state = loader.get_state(0.5)  # 获取 t=0.5s 的状态
-        state = loader.get_state_by_phase(0.25)  # 获取 25% 相位的状态
+        state = loader.get_state(0.5)  # Get state at t=0.5s
+        state = loader.get_state_by_phase(0.25)  # Get state at 25% phase
     """
     
-    # TRON1 关节名称顺序
+    # TRON1 joint name order
     JOINT_NAMES = [
         "abad_L_Joint", "hip_L_Joint", "knee_L_Joint",
         "abad_R_Joint", "hip_R_Joint", "knee_R_Joint"
     ]
     
-    # 关节角度限制 (rad)
+    # Joint angle limits (rad)
     JOINT_LIMITS = {
         "abad_L_Joint": (-0.38, 1.40),
         "hip_L_Joint": (-1.01, 1.40),
@@ -49,17 +49,17 @@ class MotionLoader:
     
     def __init__(self, motion_file: str):
         """
-        初始化加载器
+        Initialize loader
         
         Args:
-            motion_file: YAML 动作文件路径
+            motion_file: YAML motion file path
         """
         self.motion_file = motion_file
         self.keyframes: List[MotionData] = []
         self.duration = 0.0
         self.loop = True
         
-        # 插值器
+        # Interpolators
         self._joint_splines: Optional[List[CubicSpline]] = None
         self._height_spline: Optional[CubicSpline] = None
         
@@ -67,7 +67,7 @@ class MotionLoader:
         self._build_splines()
         
     def _load_motion(self):
-        """从 YAML 加载动作数据"""
+        """Load motion data from YAML"""
         with open(self.motion_file, 'r') as f:
             data = yaml.safe_load(f)
             
@@ -82,7 +82,7 @@ class MotionLoader:
             time = kf['time']
             joints = kf['joints']
             
-            # 按顺序提取关节角度
+            # Extract joint angles in order
             joint_positions = np.array([
                 joints.get('abad_L', 0.0),
                 joints.get('hip_L', 0.0),
@@ -94,7 +94,7 @@ class MotionLoader:
             
             base_height = kf.get('base_height', 0.55)
             
-            # 可选的基座速度和姿态
+            # Optional base velocity and orientation
             base_vel = kf.get('base_velocity')
             if base_vel:
                 base_vel = np.array([base_vel.get('x', 0), base_vel.get('y', 0), base_vel.get('z', 0)])
@@ -111,54 +111,54 @@ class MotionLoader:
                 base_orientation=base_orient,
             ))
             
-        # 确保按时间排序
+        # Ensure sorted by time
         self.keyframes.sort(key=lambda x: x.time)
         
         print(f"Loaded motion '{self.name}': {len(self.keyframes)} keyframes, duration={self.duration}s")
         
     def _build_splines(self):
-        """构建三次样条插值器"""
+        """Build cubic spline interpolators"""
         if len(self.keyframes) < 2:
             raise ValueError("Need at least 2 keyframes for interpolation")
             
         times = np.array([kf.time for kf in self.keyframes])
         
-        # 关节位置插值器 (每个关节一个)
+        # Joint position interpolators (one per joint)
         joint_positions = np.array([kf.joint_positions for kf in self.keyframes])
         self._joint_splines = []
         for i in range(6):
             spline = CubicSpline(times, joint_positions[:, i], bc_type='periodic' if self.loop else 'natural')
             self._joint_splines.append(spline)
             
-        # 基座高度插值器
+        # Base height interpolator
         heights = np.array([kf.base_height for kf in self.keyframes])
         self._height_spline = CubicSpline(times, heights, bc_type='periodic' if self.loop else 'natural')
         
     def get_state(self, time: float) -> MotionData:
         """
-        获取指定时间的动作状态
+        Get motion state at specified time
         
         Args:
-            time: 时间 (秒)
+            time: Time (seconds)
             
         Returns:
-            MotionData: 插值后的动作状态
+            MotionData: Interpolated motion state
         """
-        # 处理时间循环
+        # Handle time looping
         if self.loop:
             time = time % self.duration
         else:
             time = np.clip(time, 0, self.duration)
             
-        # 插值关节位置
+        # Interpolate joint positions
         joint_positions = np.array([spline(time) for spline in self._joint_splines])
         
-        # 裁剪到关节限制
+        # Clip to joint limits
         for i, name in enumerate(self.JOINT_NAMES):
             low, high = self.JOINT_LIMITS[name]
             joint_positions[i] = np.clip(joint_positions[i], low, high)
             
-        # 插值基座高度
+        # Interpolate base height
         base_height = float(self._height_spline(time))
         
         return MotionData(
@@ -169,26 +169,26 @@ class MotionLoader:
         
     def get_state_by_phase(self, phase: float) -> MotionData:
         """
-        根据相位获取动作状态
+        Get motion state by phase
         
         Args:
-            phase: 相位 [0, 1]
+            phase: Phase [0, 1]
             
         Returns:
-            MotionData: 插值后的动作状态
+            MotionData: Interpolated motion state
         """
         time = phase * self.duration
         return self.get_state(time)
         
     def get_joint_velocities(self, time: float) -> np.ndarray:
         """
-        获取关节速度 (插值导数)
+        Get joint velocities (interpolation derivative)
         
         Args:
-            time: 时间 (秒)
+            time: Time (seconds)
             
         Returns:
-            np.ndarray: 6 个关节的速度
+            np.ndarray: 6 joint velocities
         """
         if self.loop:
             time = time % self.duration
@@ -200,10 +200,10 @@ class MotionLoader:
         
     def validate_motion(self) -> bool:
         """
-        验证动作是否在关节限制内
+        Validate motion is within joint limits
         
         Returns:
-            bool: 是否有效
+            bool: Whether valid
         """
         valid = True
         for kf in self.keyframes:
@@ -217,7 +217,7 @@ class MotionLoader:
 
 
 if __name__ == '__main__':
-    # 测试加载器
+    # Test loader
     import os
     script_dir = os.path.dirname(os.path.abspath(__file__))
     motion_file = os.path.join(script_dir, 'motions', 'jump.yaml')
@@ -226,7 +226,7 @@ if __name__ == '__main__':
         loader = MotionLoader(motion_file)
         loader.validate_motion()
         
-        # 测试插值
+        # Test interpolation
         for t in np.linspace(0, loader.duration, 11):
             state = loader.get_state(t)
             print(f"t={t:.2f}s: height={state.base_height:.3f}m, joints={state.joint_positions}")
