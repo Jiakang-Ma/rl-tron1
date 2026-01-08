@@ -171,6 +171,7 @@ This project builds upon these open-source projects:
 ## Contributors
 
 - Jiakang Ma
+- Xihua Zhang
 - Hongwei Xiong 
 - Bobin Wang
 - Wen
