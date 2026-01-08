@@ -35,6 +35,9 @@ _repo
 _build
 .lastformat
 
+# Project report (not for git)
+docs/
+
 # Submodule git directories (keep submodules clean)
 tron1-rl-deploy-python/.git
 pointfoot-mujoco-sim/.git
