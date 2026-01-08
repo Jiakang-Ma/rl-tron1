@@ -1,0 +1,84 @@
+# TRON1 双足机器人 - 单脚跳动作
+# Single Leg Hop Motion for TRON1
+#
+# 使用左腿支撑，右腿收起
+# 关节限制同 jump.yaml
+
+motion:
+  name: "hop_left"
+  description: "左腿单脚跳"
+  duration: 0.8
+  loop: true
+
+keyframes:
+  # ============ 单腿站立 ============
+  - time: 0.0
+    base_height: 0.52
+    joints:
+      abad_L: 0.0
+      hip_L: 0.0
+      knee_L: 0.0
+      abad_R: 0.2      # 右腿外展
+      hip_R: -0.8      # 右腿抬起
+      knee_R: -0.6     # 右腿弯曲
+    description: "左腿站立"
+
+  # ============ 蓄力下蹲 ============
+  - time: 0.15
+    base_height: 0.40
+    joints:
+      abad_L: 0.0
+      hip_L: -0.7      # 左腿蹲下
+      knee_L: 1.1
+      abad_R: 0.2
+      hip_R: -0.9
+      knee_R: -0.7
+    description: "单腿蓄力"
+
+  # ============ 起跳 ============
+  - time: 0.28
+    base_height: 0.55
+    joints:
+      abad_L: 0.0
+      hip_L: 0.3
+      knee_L: -0.2
+      abad_R: 0.2
+      hip_R: -0.6
+      knee_R: -0.5
+    description: "单腿起跳"
+
+  # ============ 空中 ============
+  - time: 0.45
+    base_height: 0.65
+    joints:
+      abad_L: 0.0
+      hip_L: 0.1
+      knee_L: 0.2
+      abad_R: 0.2
+      hip_R: -0.7
+      knee_R: -0.6
+    description: "空中"
+
+  # ============ 落地 ============
+  - time: 0.65
+    base_height: 0.42
+    joints:
+      abad_L: 0.0
+      hip_L: -0.5
+      knee_L: 0.9
+      abad_R: 0.2
+      hip_R: -0.8
+      knee_R: -0.6
+    description: "单腿落地缓冲"
+
+  # ============ 恢复 ============
+  - time: 0.8
+    base_height: 0.52
+    joints:
+      abad_L: 0.0
+      hip_L: 0.0
+      knee_L: 0.0
+      abad_R: 0.2
+      hip_R: -0.8
+      knee_R: -0.6
+    description: "恢复"

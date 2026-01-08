@@ -1,0 +1,101 @@
+# TRON1 双足机器人 - 跳跃动作
+# Jump Motion for TRON1 Bipedal Robot
+#
+# 关节顺序: abad_L, hip_L, knee_L, abad_R, hip_R, knee_R
+# 单位: 角度 rad, 高度 m, 时间 s
+#
+# 关节限制:
+#   abad_L: [-0.38, 1.40]   abad_R: [-1.40, 0.38]
+#   hip_L:  [-1.01, 1.40]   hip_R:  [-1.40, 1.01]
+#   knee_L: [-0.87, 1.36]   knee_R: [-1.36, 0.87]
+
+motion:
+  name: "jump"
+  description: "双脚原地跳跃动作"
+  duration: 1.0  # 动作周期 (秒)
+  loop: true     # 是否循环
+
+keyframes:
+  # ============ 站立姿态 (起始) ============
+  - time: 0.0
+    base_height: 0.83
+    joints:
+      abad_L: 0.0
+      hip_L: 0.0
+      knee_L: 0.0
+      abad_R: 0.0
+      hip_R: 0.0
+      knee_R: 0.0
+    description: "初始站立"
+
+  # ============ 下蹲蓄力 ============
+  - time: 0.15
+    base_height: 0.63
+    joints:
+      abad_L: 0.0
+      hip_L: -0.6     # 髋关节向后 (蹲下)
+      knee_L: 1.0     # 膝关节弯曲
+      abad_R: 0.0
+      hip_R: -0.6
+      knee_R: -1.0    # 注意: R 侧膝关节符号相反
+    description: "下蹲蓄力"
+
+  # ============ 伸展起跳 ============
+  - time: 0.30
+    base_height: 0.85
+    joints:
+      abad_L: 0.0
+      hip_L: 0.3      # 髋关节伸展
+      knee_L: -0.3    # 膝关节伸直
+      abad_R: 0.0
+      hip_R: 0.3
+      knee_R: 0.3
+    description: "快速伸展起跳"
+
+  # ============ 空中最高点 ============
+  - time: 0.50
+    base_height: 1.00
+    joints:
+      abad_L: 0.0
+      hip_L: 0.1      # 空中微屈
+      knee_L: 0.3
+      abad_R: 0.0
+      hip_R: 0.1
+      knee_R: -0.3
+    description: "空中最高点"
+
+  # ============ 落地准备 ============
+  - time: 0.65
+    base_height: 0.85
+    joints:
+      abad_L: 0.0
+      hip_L: -0.2     # 准备缓冲
+      knee_L: 0.5
+      abad_R: 0.0
+      hip_R: -0.2
+      knee_R: -0.5
+    description: "落地准备"
+
+  # ============ 落地缓冲 ============
+  - time: 0.80
+    base_height: 0.65
+    joints:
+      abad_L: 0.0
+      hip_L: -0.5     # 深蹲缓冲
+      knee_L: 0.9
+      abad_R: 0.0
+      hip_R: -0.5
+      knee_R: -0.9
+    description: "落地缓冲吸收冲击"
+
+  # ============ 恢复站立 (循环起点) ============
+  - time: 1.0
+    base_height: 0.83
+    joints:
+      abad_L: 0.0
+      hip_L: 0.0
+      knee_L: 0.0
+      abad_R: 0.0
+      hip_R: 0.0
+      knee_R: 0.0
+    description: "恢复站立 (循环)"
