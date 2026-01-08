@@ -154,10 +154,6 @@ For detailed instructions, see:
 
 ## Sim2Real Deployment
 
-<p align="center">
-    <img alt="Learning Framework" src="./media/learning_frame.png" width="600">
-</p>
-
 The policies are trained using PPO within an asymmetric actor-critic framework, with actions determined by history observations latent and proprioceptive observation.
 
 **Framework Reference:** Inspired by [CTS: Concurrent Teacher-Student Reinforcement Learning for Legged Locomotion](https://doi.org/10.1109/LRA.2024.3457379) (H. Wang, H. Luo, W. Zhang, and H. Chen, 2024).
