@@ -99,9 +99,6 @@ python -m pip install -e exts/bipedal_locomotion
 cd rsl_rl && python -m pip install -e . && cd ..
 ```
 
-### Step 4: IDE Setup (Optional)
-
-Update `.vscode/settings.json` with your Isaac Lab and Python paths for code navigation support.
 
 ## Usage
 
